@@ -104,8 +104,10 @@ class TransformerLM(torch.nn.Module):
         embedding = batch['embedding'].to(device)
 
         # 1. prepare llm_target
-        lm_target = [torch.tensor([IGNORE_ID] * (2 + text_token_len[i]) + speech_token[i, :speech_token_len[i]].tolist() + [self.speech_token_size]) for i in range(text_token.size(0))]
-        lm_target = pad_sequence(lm_target, batch_first=True, padding_value=IGNORE_ID).to(device)
+        lm_target = [torch.tensor([IGNORE_ID] * (2 + text_token_len[i]) +
+                                  speech_token[i, :speech_token_len[i]].tolist() +
+                                  [self.speech_token_size]) for i in range(text_token.size(0))]
+        lm_target = pad_sequence(lm_target, batch_first=True, padding_value=IGNORE_ID).to(device) #一个批次中，最长seq，其他不够长补-1
 
         # 1. encode text_token
         text_token = self.text_embedding(text_token)

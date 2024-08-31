@@ -1,4 +1,4 @@
-# set random seed, so that you may reproduce your result.
+# set random seed, so that you may reproduce your result. 采样不同提升wer
 __set_seed1: !apply:random.seed [1986]
 __set_seed2: !apply:numpy.random.seed [1986]
 __set_seed3: !apply:torch.manual_seed [1986]
@@ -55,10 +55,10 @@ llm: !new:cosyvoice.llm.llm.TransformerLM
         selfattention_layer_type: 'rel_selfattn'
         static_chunk_size: 1
     sampling: !name:cosyvoice.utils.common.ras_sampling
-        top_p: 0.8
-        top_k: 25
-        win_size: 10
-        tau_r: 0.1
+        top_p: 0.8 #按出现概率，排序，累加到top-p的停止
+        top_k: 25 # 从累加到top-k的词中，只选前25个
+        win_size: 10 #发音 依赖的 上下文比较小
+        tau_r: 0.1 # 温度参数的比率较低（分母），使得生成过程更加确定，减少随机性，提高生成内容的质量。这对于语音合成等应用场景来说，可以使生成的语音更加连贯和自然。
 
 flow: !new:cosyvoice.flow.flow.MaskedDiffWithXvec
     input_size: 512
@@ -109,7 +109,7 @@ flow: !new:cosyvoice.flow.flow.MaskedDiffWithXvec
             num_heads: 8
             act_fn: 'gelu'
 
-hift: !new:cosyvoice.hifigan.generator.HiFTGenerator
+hift: !new:cosyvoice.hifigan.generator.HiFTGenerator # gan生成器
     in_channels: 80
     base_channels: 512
     nb_harmonics: 8

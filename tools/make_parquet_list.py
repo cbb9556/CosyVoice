@@ -104,7 +104,7 @@ if __name__ == "__main__":
     with open('{}/data.list'.format(args.des_dir), 'w', encoding='utf8') as f1, \
             open('{}/utt2data.list'.format(args.des_dir), 'w', encoding='utf8') as f2, \
             open('{}/spk2data.list'.format(args.des_dir), 'w', encoding='utf8') as f3:
-        for name in parquet_list:
+        for name in parquet_list: #存入到目标目录的三个文件夹
             f1.write(name + '\n')
         for name in utt2parquet_list:
             f2.write(name + '\n')

@@ -61,7 +61,7 @@ def main():
     use_cuda = args.gpu >= 0 and torch.cuda.is_available()
     device = torch.device('cuda' if use_cuda else 'cpu')
     with open(args.config, 'r') as f:
-        configs = load_hyperpyyaml(f)
+        configs = load_hyperpyyaml(f) #从 configs.yaml 中加载配置
 
     model = CosyVoiceModel(configs['llm'], configs['flow'], configs['hift'])
     model.load(args.llm_model, args.flow_model, args.hifigan_model)
