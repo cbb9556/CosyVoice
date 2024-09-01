@@ -104,14 +104,14 @@ class TransformerLM(torch.nn.Module):
         embedding = batch['embedding'].to(device)
 
         # 1. prepare llm_target
-        lm_target = [torch.tensor([IGNORE_ID] * (2 + text_token_len[i]) +
-                                  speech_token[i, :speech_token_len[i]].tolist() +
-                                  [self.speech_token_size]) for i in range(text_token.size(0))]
-        lm_target = pad_sequence(lm_target, batch_first=True, padding_value=IGNORE_ID).to(device) #一个批次中，最长seq，其他不够长补-1
+        lm_target = [torch.tensor([IGNORE_ID] * (2 + text_token_len[i]) + # 起始S 和 T
+                                  speech_token[i, :speech_token_len[i]].tolist() + #批次 和 speech长度，#tolis维度 i值去掉
+                                  [self.speech_token_size]) for i in range(text_token.size(0))] # speech_token_size就是结束EOS
+        lm_target = pad_sequence(lm_target, batch_first=True, padding_value=IGNORE_ID).to(device) #一个批次中，最长seq，其他不够长补-1，就是原始的输入值
 
         # 1. encode text_token
-        text_token = self.text_embedding(text_token)
-        text_token, text_token_len = self.encode(text_token, text_token_len)
+        text_token = self.text_embedding(text_token) #需要合成语音的文字输入，词嵌入层， 将相似词汇，在向量上放到近似位置
+        text_token, text_token_len = self.encode(text_token, text_token_len) #
 
         # 2. embedding projection
         embedding = F.normalize(embedding, dim=1)
@@ -131,7 +131,7 @@ class TransformerLM(torch.nn.Module):
         # 6. run lm forward
         lm_output, lm_output_mask = self.llm(lm_input, lm_input_len.to(device))
         logits = self.llm_decoder(lm_output)
-        loss = self.criterion_ce(logits, lm_target)
+        loss = self.criterion_ce(logits, lm_target) # 输出的 就是 speech token， 使用kl div loss
         acc = th_accuracy(logits.view(-1, self.speech_token_size + 1), lm_target, ignore_label=IGNORE_ID)
         return {'loss': loss, 'acc': acc}
 
