@@ -16,6 +16,7 @@ from __future__ import print_function
 import argparse
 import datetime
 import logging
+
 logging.getLogger('matplotlib').setLevel(logging.WARNING)
 from copy import deepcopy
 import torch
@@ -23,8 +24,6 @@ import torch.distributed as dist
 import deepspeed
 
 from hyperpyyaml import load_hyperpyyaml
-
-from torch.distributed.elastic.multiprocessing.errors import record
 
 from cosyvoice.utils.executor import Executor
 from cosyvoice.utils.train_utils import (
@@ -36,6 +35,12 @@ from cosyvoice.utils.train_utils import (
 
 
 def get_args():
+    """
+    获取命令行参数。
+
+    Returns:
+        argparse.Namespace: 解析后的参数对象。
+    """
     parser = argparse.ArgumentParser(description='training your network')
     parser.add_argument('--train_engine',
                         default='torch_ddp',
@@ -83,6 +88,9 @@ def get_args():
 
 @record
 def main():
+    """
+    主函数，负责初始化和训练模型。
+    """
     args = get_args()
     logging.basicConfig(level=logging.DEBUG,
                         format='%(asctime)s %(levelname)s %(message)s')
@@ -92,45 +100,47 @@ def main():
         configs = load_hyperpyyaml(f, overrides=override_dict)
     configs['train_conf'].update(vars(args))
 
-    # Init env for ddp
+    # 初始化DDP环境
     init_distributed(args)
 
-    # Get dataset & dataloader
+    # 获取数据集和数据加载器
     train_dataset, cv_dataset, train_data_loader, cv_data_loader = \
         init_dataset_and_dataloader(args, configs)
 
-    # Do some sanity checks and save config to arsg.model_dir
+    # 执行一些检查并保存配置到模型目录
     configs = check_modify_and_save_config(args, configs)
 
-    # Tensorboard summary
+    # 初始化Tensorboard摘要写入器
     writer = init_summarywriter(args)
 
-    # load checkpoint
+    # 加载检查点
     model = configs[args.model]
     if args.checkpoint is not None:
         model.load_state_dict(torch.load(args.checkpoint, map_location='cpu'))
 
-    # Dispatch model from cpu to gpu
+    # 将模型从CPU转移到GPU
     model = wrap_cuda_model(args, model)
 
-    # Get optimizer & scheduler
+    # 获取优化器和调度器
     model, optimizer, scheduler = init_optimizer_and_scheduler(args, configs, model)
 
-    # Save init checkpoints
+    # 保存初始化检查点
     info_dict = deepcopy(configs['train_conf'])
     save_model(model, 'init', info_dict)
 
-    # Get executor
+    # 获取执行器
     executor = Executor()
 
-    # Start training loop
+    # 开始训练循环
     for epoch in range(info_dict['max_epoch']):
         executor.epoch = epoch
         train_dataset.set_epoch(epoch)
         dist.barrier()
         group_join = dist.new_group(backend="gloo", timeout=datetime.timedelta(seconds=args.timeout))
-        executor.train_one_epoc(model, optimizer, scheduler, train_data_loader, cv_data_loader, writer, info_dict, group_join)
+        executor.train_one_epoc(model, optimizer, scheduler, train_data_loader, cv_data_loader, writer, info_dict,
+                                group_join)
         dist.destroy_process_group(group_join)
+
 
 if __name__ == '__main__':
     main()

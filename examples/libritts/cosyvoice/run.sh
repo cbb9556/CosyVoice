@@ -86,21 +86,57 @@ if [ ${stage} -le 4 ] && [ ${stop_stage} -ge 4 ]; then
 fi
 
 # train llm
+ script
+# 设置可见的GPU设备
 export CUDA_VISIBLE_DEVICES="0,1,2,3"
+
+# 获取可用GPU数量
 num_gpus=$(echo $CUDA_VISIBLE_DEVICES | awk -F "," '{print NF}')
+
+# 设置任务ID
 job_id=1986
+
+# 设置分布式训练后端
 dist_backend="nccl"
+
+# 设置训练时的工人进程数量
 num_workers=2
+
+# 设置预取数量
 prefetch=100
+
+# 设置训练引擎
 train_engine=torch_ddp
+
+# 判断是否执行第5阶段的训练
 if [ ${stage} -le 5 ] && [ ${stop_stage} -ge 5 ]; then
-  echo "Run train. We only support llm traning for now. If your want to train from scratch, please use conf/cosyvoice.fromscratch.yaml"
+  # 提示用户当前仅支持llm训练，并指明如果从头开始训练应使用的配置文件
+  echo "Run train. We only support llm traning for now.
+  If your want to train from scratch, please use conf/cosyvoice.fromscratch.yaml"
+
+  # 如果训练引擎为deepspeed，提醒用户其有自己的优化器配置
   if [ $train_engine == 'deepspeed' ]; then
     echo "Notice deepspeed has its own optimizer config. Modify conf/ds_stage2.json if necessary"
   fi
+
+  # 合并训练数据列表
   cat data/{train-clean-100,train-clean-360,train-other-500}/parquet/data.list > data/train.data.list
+
+  # 合并验证数据列表
   cat data/{dev-clean,dev-other}/parquet/data.list > data/dev.data.list
+
+  # 遍历模型类型
   for model in llm; do
+    # 使用torchrun启动分布式训练
+    # 参数说明：
+    # --nnodes=1 表示单节点运行
+    # --nproc_per_node=$num_gpus 指定每个节点上使用的进程数
+    # --rdzv_id=$job_id 设置RDZV ID
+    # --rdzv_backend="c10d" 设置RDZV后端
+    # --rdzv_endpoint="localhost:0" 设置RDZV端点
+    # 其余参数分别为训练脚本路径、训练引擎、配置文件路径、训练数据路径、验证数据路径、
+    # 模型类型、检查点路径、模型保存目录、TensorBoard日志目录、分布式后端、工作进程数、预取数量、
+    # 内存固定标志、DeepSpeed配置文件路径及状态保存选项
     torchrun --nnodes=1 --nproc_per_node=$num_gpus \
         --rdzv_id=$job_id --rdzv_backend="c10d" --rdzv_endpoint="localhost:0" \
       cosyvoice/bin/train.py \

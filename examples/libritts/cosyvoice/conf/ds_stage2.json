@@ -40,3 +40,56 @@
     }
   }
 }
+
+{
+  // 每个GPU上的训练微批量大小
+  "train_micro_batch_size_per_gpu": 1,
+  // 梯度累积的步数，用于模拟更大的批量大小
+  "gradient_accumulation_steps": 1,
+  // 打印训练进度的步数间隔
+  "steps_per_print": 100,
+  // 梯度裁剪的阈值，以防止梯度爆炸
+  "gradient_clipping": 5,
+  // 是否启用半精度浮点数训练（FP16）
+  "fp16": {
+    "enabled": false,
+    "auto_cast": false,
+    "loss_scale": 0,
+    "initial_scale_power": 16,
+    "loss_scale_window": 256,
+    "hysteresis": 2,
+    "consecutive_hysteresis": false,
+    "min_loss_scale": 1
+  },
+  // 是否启用BF16精度训练
+  "bf16": {
+    "enabled": false
+  },
+  // 是否强制在CPU上运行优化器，与ZeRO内存优化相关
+  "zero_force_ds_cpu_optimizer": false,
+  // ZeRO优化的配置
+  "zero_optimization": {
+    "stage": 2,
+    "offload_optimizer": {
+      "device": "none",
+      "pin_memory": true
+    },
+    "allgather_partitions": true,
+    "allgather_bucket_size": 5e8,
+    "overlap_comm": false,
+    "reduce_scatter": true,
+    "reduce_bucket_size": 5e8,
+    "contiguous_gradients" : true
+  },
+  // 优化器的配置
+  "optimizer": {
+    "type": "AdamW",
+    // AdamW优化器的具体参数
+    "params": {
+        "lr": 0.001, // 学习率
+        "weight_decay": 0.0001, // 权重衰减
+        "torch_adam": true, // 使用PyTorch原生的Adam实现
+        "adam_w_mode": true // 启用AdamW模式
+    }
+  }
+}
